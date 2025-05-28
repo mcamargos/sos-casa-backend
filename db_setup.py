@@ -1,49 +1,79 @@
 import sqlite3
+import random
 import os
 
 # Caminho para o banco de dados
 DB_FILE = 'providers.db'
-DB_PATH = os.path.join(os.path.dirname(__file__), DB_FILE)
 
-def create_db_and_insert_data():
+def populate_database(db_name=DB_FILE, num_providers=100): # Aumentei para 100 profissionais
     conn = None
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(db_name)
         cursor = conn.cursor()
 
-        # Cria a tabela de profissionais se ela não existir
+        # (Opcional) Remover a tabela existente para recriar com novos dados
+        cursor.execute("DROP TABLE IF EXISTS providers")
+
+        # Cria a tabela de profissionais
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS profissionais (
+            CREATE TABLE IF NOT EXISTS providers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nome TEXT NOT NULL,
                 servico TEXT NOT NULL,
                 latitude REAL NOT NULL,
                 longitude REAL NOT NULL,
                 contato TEXT,
-                disponivel BOOLEAN NOT NULL DEFAULT 1
+                disponivel BOOLEAN NOT NULL DEFAULT 1,
+                avaliacoes INTEGER NOT NULL DEFAULT 0
             )
         ''')
 
-        # Dados fictícios (latitude e longitude de áreas em Brasília - DF, Brasil)
-        # Você pode ajustar esses valores para a sua região ou onde quiser simular
-        profissionais_data = [
-            ("Pedro Mendes", "Encanador", -15.8080, -47.8759, "(61) 9876-5432", True), # Eixo Monumental
-            ("Ana Paula", "Faxineira", -15.8200, -47.9000, "(61) 9987-6543", True),    # Sudoeste
-            ("Carlos Souza", "Eletricista", -15.7900, -47.8850, "(61) 9765-4321", False), # Asa Norte
-            ("Maria Clara", "Faxineira", -15.8150, -47.8900, "(61) 9876-1234", True),    # Asa Sul
-            ("José Alves", "Chaveiro", -15.8000, -47.8500, "(61) 9912-3456", True),    # Lago Norte
-            ("Luiza Santos", "Encanador", -15.8400, -47.9200, "(61) 9876-0000", True),  # Guará
-            ("Fernanda Lima", "Doméstica", -15.7700, -47.8000, "(61) 9912-1111", True), # Paranoá
-            ("Rafaela Costa", "Faxineira", -15.8050, -47.8650, "(61) 9876-2222", True), # Plano Piloto
-            ("Marcos Dantas", "Pedreiro", -15.8300, -47.9100, "(61) 9988-3333", True),  # Taguatinga
-            ("Sofia Oliveira", "Eletricista", -15.8090, -47.8700, "(61) 9777-4444", True) # Noroeste
+        services = [
+            "Encanador", "Eletricista", "Faxineira", "Chaveiro", "Marceneiro",
+            "Pedreiro", "Doméstica", "Jardineiro", "Pintor", "Técnico de Ar Condicionado",
+            "Montador de Móveis", "Limpeza de Estofados", "Diarista", "Marmorista"
         ]
 
-        # Insere os dados na tabela
-        cursor.executemany("INSERT INTO profissionais (nome, servico, latitude, longitude, contato, disponivel) VALUES (?, ?, ?, ?, ?, ?)", profissionais_data)
+        # Localizações representativas em Brasília (DF)
+        locations_brasilia_areas = [
+            (-15.7942, -47.8822),   # Plano Piloto (Centro)
+            (-15.8200, -47.9000),   # Sudoeste
+            (-15.7550, -47.8650),   # Asa Norte
+            (-15.8400, -47.9200),   # Guará
+            (-15.8373, -47.9014),   # Lago Sul
+            (-15.7801, -47.8340),   # Lago Norte
+            (-16.0357, -48.0543),   # Ceilândia
+            (-15.8429, -48.0654),   # Taguatinga
+            (-15.9678, -48.0032),   # Águas Claras
+            (-15.9761, -47.9228),   # Samambaia
+            (-15.8821, -48.0772),   # Gama
+            (-15.8797, -47.9657),   # Recanto das Emas
+            (-15.8500, -47.7800),   # São Sebastião
+            (-15.7700, -47.8000)    # Paranoá
+        ]
+
+        profissionais_data = []
+        for i in range(num_providers):
+            nome = f"Profissional {chr(65 + random.randint(0, 25))}{chr(65 + random.randint(0, 25))}" # Nomes tipo "Profissional AB"
+            servico = random.choice(services)
+
+            base_lat, base_lon = random.choice(locations_brasilia_areas)
+            latitude = base_lat + random.uniform(-0.02, 0.02) # Variação de +/- 2km aprox.
+            longitude = base_lon + random.uniform(-0.02, 0.02)
+
+            contato = f"619{random.randint(80000000, 99999999)}" # Telefone (61) 9xxxx-xxxx
+            disponivel = random.choice([0, 1]) # 0 para false, 1 para true
+            avaliacoes = random.randint(5, 500) # Número de avaliações fictício
+
+            profissionais_data.append((nome, servico, latitude, longitude, contato, disponivel, avaliacoes))
+
+        cursor.executemany('''
+            INSERT INTO providers (nome, servico, latitude, longitude, contato, disponivel, avaliacoes)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', profissionais_data)
 
         conn.commit()
-        print(f"Banco de dados '{DB_FILE}' criado e dados inseridos com sucesso!")
+        print(f"Banco de dados '{db_name}' recriado e populado com {num_providers} profissionais.")
 
     except sqlite3.Error as e:
         print(f"Erro no SQLite: {e}")
@@ -52,4 +82,4 @@ def create_db_and_insert_data():
             conn.close()
 
 if __name__ == "__main__":
-    create_db_and_insert_data()
+    populate_database()

@@ -2,17 +2,16 @@ import os
 import sqlite3
 import math
 from flask import Flask, jsonify, request
-from flask_cors import CORS # Importa Flask-CORS
+from flask_cors import CORS
 from dotenv import load_dotenv
 
 # Carrega variáveis de ambiente do arquivo .env
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app) # Habilita CORS para todas as rotas, permitindo que seu app mobile acesse a API
+CORS(app) # Habilita CORS para todas as rotas
 
 # Define o caminho para o banco de dados SQLite
-# DATABASE_URL no .env deve ser 'sqlite:///providers.db'
 DATABASE = os.getenv('DATABASE_URL').replace('sqlite:///', '')
 
 # Função auxiliar para conectar ao banco de dados
@@ -21,8 +20,7 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row # Retorna linhas como objetos que podem ser acessados por nome da coluna
     return conn
 
-# Função para calcular a distância entre duas coordenadas (Fórmula de Haversine simplificada)
-# Apenas para fins de MVP. Para produção, considere bibliotecas mais robustas ou APIs de mapas.
+# Função para calcular a distância entre duas coordenadas (Fórmula de Haversine)
 def haversine_distance(lat1, lon1, lat2, lon2):
     R = 6371 # Raio da Terra em quilômetros
 
@@ -56,25 +54,23 @@ def search_providers():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Busca profissionais pelo tipo de serviço e que estão disponíveis
-    query = "SELECT * FROM profissionais WHERE servico = ? AND disponivel = 1"
+    query = "SELECT * FROM providers WHERE servico = ? AND disponivel = 1"
     cursor.execute(query, (service_type,))
 
-    providers = []
+    providers_list = []
     for row in cursor.fetchall():
-        provider = dict(row) # Converte a linha SQLite em um dicionário
+        provider = dict(row)
 
         # Calcula a distância entre o usuário e o profissional
         distance = haversine_distance(user_lat, user_lon, provider['latitude'], provider['longitude'])
         provider['distancia_km'] = round(distance, 2) # Adiciona a distância ao dicionário
-        providers.append(provider)
+        providers_list.append(provider)
 
     conn.close()
 
-    # Opcional: Ordenar por distância
-    providers.sort(key=lambda p: p['distancia_km'])
+    providers_list.sort(key=lambda p: p['distancia_km'])
 
-    return jsonify(providers)
+    return jsonify(providers_list)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
